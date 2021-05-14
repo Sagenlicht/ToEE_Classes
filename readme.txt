@@ -1,6 +1,11 @@
 Stormlord Prestige Class for ToEE
 Temple+ required
 
-Work in Progress
+Fully working
+Ingame help included
 
-What is working?
+What's currently missing?
+Storm Walk not implemented
+Storm of Elemental Fury deactivated until the spell is merged to temple+
+
+Storm Ride is not implemented as there is no fly spell in ToEE

@@ -65,6 +65,9 @@
 
 //
 {82}{Fochlucan Lyrist}
+{83}{Marshal}
+{84}{Hexblade}
+
 
 {300}{Psi Points} // max
 {301}{Psi Points} // cur
@@ -86,7 +89,7 @@
 {1031}{Sdwd}
 {1032}{Thmg}
 
-{1033}{Wrlk}
+{1033}{Wlk}
 {1034}{Fvrd}
 {1035}{}
 {1036}{}
@@ -137,6 +140,7 @@
 {1080}{Rkvn}
 {1081}{Ssnj}
 {1082}{Foch}
+{1083}{Mrshl}
 
 
 
@@ -321,6 +325,7 @@ Alignment: Neutral good, neutral, chaotic neutral, or neutral evil.
 Spells: Casts 1st-level arcane and divine spells.
 Special: Bardic knowledge, Speak Language (Druidic) and evasion abilities.
 }
+{13076}Marshal{Sometimes it is not enough to be a conquering warrior, a champion of all that's right, an experienced sellsword, or an elite foot soldier. Sometimes the circumstances require a solid commander of soldiers and situations. Sometimes the circumstances demand a marshal.}
 
 // Cannot Pick Class Short Help Goes in the range of 20007+
 {20007} Arcane Archer{Arcane Archer requirements:
