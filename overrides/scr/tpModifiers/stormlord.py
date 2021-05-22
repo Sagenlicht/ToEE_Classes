@@ -21,6 +21,7 @@ classSpecModule = __import__('class038_stormlord')
 
 ########## Python Action ID's ##########
 pythonActionStormId = 3801
+pythonActionCracklingAuraID = 3802
 ########################################
 
 
@@ -113,23 +114,30 @@ electricityResistance.MapToFeat("Stormlord Resistance to Electricity")
 electricityResistance.AddHook(ET_OnTakingDamage , EK_NONE, featResistanceToElectricity, ())
 
 ## Shock Weapon ##
-## Should not stack with existing shock property on weapon but can't be queried at the moment ##
+# Vanilla adds Shocking Burst Particle Effect OnDamage2 but I don't think this is necessary
+# and it's easier to follow in the code to add it directly in OnDamage
 def featShockWeapon(attachee, args, evt_obj):
+    classLevel = attachee.stat_level_get(classEnum)
     usedWeapon = evt_obj.attack_packet.get_weapon_used()
     weaponList = stormlordWeapons()
     if not usedWeapon.obj_get_int(obj_f_weapon_type) in weaponList:
         return 0
-    classLevel = attachee.stat_level_get(classEnum)
-    bonusDice = dice_new('1d6')
-    evt_obj.damage_packet.add_dice(bonusDice, D20DT_ELECTRICITY, 100) #ID 100 in damage.mes is Weapon
+    shockProperty = usedWeapon.item_has_condition('Weapon Shock')
+    shockingBurstProperty = usedWeapon.item_has_condition('Weapon Shocking Burst')
+    if not shockProperty and not shockingBurstProperty:
+        bonusDice = dice_new('1d6')
+        evt_obj.damage_packet.add_dice(bonusDice, D20DT_ELECTRICITY, 100) #ID 100 in damage.mes is Weapon
+        game.particles('hit-SHOCK-medium', evt_obj.attack_packet.target)
     if classLevel >= 8:
-        if evt_obj.attack_packet.get_flags() & D20CAF_CRITICAL:
-            bonusDiceBurst = dice_new('1d10')
-            critMultiplier = evt_obj.damage_packet.critical_multiplier
-            if critMultiplier > 3: #unsure if needed; D20SRD description ends at x4
-                critMultiplier = 3
-            bonusDiceBurst.number = critMultiplier
-            evt_obj.damage_packet.add_dice(bonusDiceBurst, D20DT_ELECTRICITY, 100) #ID 100 in damage.mes is Weapon
+        if not shockingBurstProperty:
+            if evt_obj.attack_packet.get_flags() & D20CAF_CRITICAL:
+                bonusDiceBurst = dice_new('1d10')
+                critMultiplier = evt_obj.damage_packet.critical_multiplier
+                if critMultiplier > 3: #unsure if needed; D20SRD description ends at x4
+                    critMultiplier = 3
+                bonusDiceBurst.number = critMultiplier
+                evt_obj.damage_packet.add_dice(bonusDiceBurst, D20DT_ELECTRICITY, 100) #ID 100 in damage.mes is Weapon
+                game.particles('hit-SHOCK-burst', evt_obj.attack_packet.target)
     return 0
 
 shockWeapon = PythonModifier("Stormlord Shock Weapon Feat", 0)
@@ -137,7 +145,6 @@ shockWeapon.MapToFeat("Stormlord Shock Weapon")
 shockWeapon.AddHook(ET_OnDealingDamage, EK_NONE, featShockWeapon, ())
 
 ## Thundering Weapon ##
-## Should not stack with existing thundering property on weapon but can't be queried at the moment ##
 def featThunderingWeaponDamage(attachee, args, evt_obj):
     usedWeapon = evt_obj.attack_packet.get_weapon_used()
     weaponList = stormlordWeapons()
@@ -145,19 +152,18 @@ def featThunderingWeaponDamage(attachee, args, evt_obj):
     if not usedWeapon.obj_get_int(obj_f_weapon_type) in weaponList:
         return 0
     if evt_obj.attack_packet.get_flags() & D20CAF_CRITICAL:
-        bonusDice = dice_new('1d8')
-        critMultiplier = evt_obj.damage_packet.critical_multiplier
-        if critMultiplier > 3: #unsure if needed; D20SRD description ends at x4
-            critMultiplier = 3
-        bonusDice.number = critMultiplier
-        evt_obj.damage_packet.add_dice(bonusDice, D20DT_SONIC, 100) #ID 1012 in damage.mes is Weapon
-        # Thundering Weapons deafens on a critical hit on a failed dc save 14
-        saveDc = 14
-        if target.saving_throw(saveDc, D20_Save_Fortitude, D20STD_F_SPELL_DESCRIPTOR_SONIC, attachee, EK_D20A_STANDARD_ATTACK):
-            target.float_text_line("Not deafened")
-        else:
-            if target.condition_add_with_args('sp-Deafness', 0, 0, 0):
-                game.particles('sp-Blindness-Deafness', target)
+        thunderingProperty = usedWeapon.item_has_condition('Weapon Thundering')
+        if not thunderingProperty:
+            bonusDice = dice_new('1d8')
+            critMultiplier = evt_obj.damage_packet.critical_multiplier
+            if critMultiplier > 3: #unsure if needed; D20SRD description ends at x4
+                critMultiplier = 3
+            bonusDice.number = critMultiplier
+            evt_obj.damage_packet.add_dice(bonusDice, D20DT_SONIC, 100) #ID 1012 in damage.mes is Weapon
+            # Thundering Weapons deafens on a critical hit on a failed dc save 14
+            saveDc = 14
+            if not target.saving_throw(saveDc, D20_Save_Fortitude, D20STD_F_SPELL_DESCRIPTOR_SONIC, attachee, EK_D20A_STANDARD_ATTACK):
+                target.condition_add_with_args('sp-Deafness', 0, 0, 0)
     return 0
 
 thunderingWeapon = PythonModifier("Stormlord Thundering Weapon Feat", 0)
@@ -197,6 +203,38 @@ def pythonActionPerformStorm(attachee, args, evt_obj):
 #stormlordSLA.AddHook(ET_OnBuildRadialMenuEntry , EK_NONE, radialStormOfElementalFury, ())
 #stormlordSLA.AddHook(ET_OnD20PythonActionPerform, pythonActionStormId, pythonActionPerformStorm, ())
 
+
+#### Stormlord Particles ####
+
+def particlesRadial(attachee, args, evt_obj):
+    print "particlesRadial Hook"
+    if args.get_arg(0):
+        toggleEffectId = tpdp.RadialMenuEntryPythonAction("Deactivate Crackling Aura", D20A_PYTHON_ACTION, pythonActionCracklingAuraID, 0, "TAG_STORMLORDS")
+    else:
+        toggleEffectId = tpdp.RadialMenuEntryPythonAction("Activate Crackling Aura", D20A_PYTHON_ACTION, pythonActionCracklingAuraID, 1, "TAG_STORMLORDS")
+    toggleEffectId.add_child_to_standard(attachee, tpdp.RadialMenuStandardNode.Class)
+    return 0
+
+def toggleCracklingAura(attachee, args, evt_obj):
+    toggleSignal = evt_obj.d20a.data1
+    if toggleSignal:
+        particlesID = game.particles("Electricity Aura", attachee)
+        args.set_arg(0, 1)
+        args.set_arg(1, particlesID)
+    else:
+        game.particles_end(args.get_arg(1))
+        args.set_arg(0, 0)
+    return 0
+
+def setInitialStatusOfAura(attachee, args, evt_obj):
+    args.set_arg(0, 0)
+    return 0
+
+cracklingAura = PythonModifier("Stormlord Crackling Aura", 2)
+cracklingAura.MapToFeat("Stormlord Resistance to Electricity")
+cracklingAura.AddHook(ET_OnBuildRadialMenuEntry , EK_NONE, particlesRadial, ())
+cracklingAura.AddHook(ET_OnD20PythonActionPerform, pythonActionCracklingAuraID, toggleCracklingAura, ())
+cracklingAura.AddHook(ET_OnConditionAdd, EK_NONE, setInitialStatusOfAura, ())
 
 ##### Spell casting
 

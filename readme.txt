@@ -9,3 +9,5 @@ Storm Walk not implemented
 Storm of Elemental Fury deactivated until the spell is merged to temple+
 
 Storm Ride is not implemented as there is no fly spell in ToEE
+
+Requires nightly build 2585+ atm
